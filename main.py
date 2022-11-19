@@ -29,7 +29,7 @@ def drawText(txt, textFont, position):
     text = textFont.render(txt, True, (255, 255, 255))
     textRect = text.get_rect()
     textRect.center = leftAlignRect(textRect, position)
-    screen.blit(txt, textRect)
+    screen.blit(text, textRect)
 
 def mainScreen():
     #main render task
@@ -42,20 +42,9 @@ def mainScreen():
     while True:
         #drawing the title screen and sidebars
         screen.fill(0)
-        text = titleFont.render("EZProductivity", True, (255, 255, 255))
-        textRect = text.get_rect()
-        textRect.center = leftAlignRect(textRect, (10, 10))
-        screen.blit(text, textRect)
-
-        text = titleFont.render(f"Welcome back, {username}!", True, (255, 255, 255))
-        textRect = text.get_rect()
-        textRect.center = leftAlignRect(textRect, (400, 10))
-        screen.blit(text, textRect)
-
-        text = titleFont.render("Here is today's schedule!", True, (255, 255, 255))
-        textRect = text.get_rect()
-        textRect.center = leftAlignRect(textRect, (400, 40))
-        screen.blit(text, textRect)
+        drawText("EZTime", titleFont, (10, 10))
+        drawText(f"Welcome back, {username}!", titleFont, (400, 10))
+        drawText("Here is your schedule for today!", titleFont, (400, 40))
 
         pygame.display.update()
 
