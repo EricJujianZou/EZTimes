@@ -1,4 +1,5 @@
 import pygame
+import pygame_textinput
 import json
 import time
 import os
@@ -28,6 +29,24 @@ def readJsonFile(fileName):
     fileData = json.loads(fileHandle.read())
     fileHandle.close()
     return fileData
+
+#takes a table and returns a new table with pages of length N
+def tablePaging(table, plen):
+    counter = 0
+    pager = []
+    pages = []
+    for idx in table:
+        pager.append(idx)
+        counter += 1
+        if counter == plen:
+            counter = 0
+            pages.append(pager)
+            pager = []
+
+    if len(pager) > 0:
+        pages.append(pager)
+    
+    return pages
 
 #checks if a value is in a range
 def checkBounds(min, max, value):
@@ -99,6 +118,9 @@ def mainScreen():
 
 def routineScreen(): #add and remove things to your daily routine
     global currentScreen
+    currentTasks = readJsonFile("tasks.json")
+    tasksPages = None
+
     buttons = [
         buttonData("Back", titleFont, (10, 10), (100, 36))
     ]
@@ -108,7 +130,9 @@ def routineScreen(): #add and remove things to your daily routine
     }
 
     while True:
+        #drawing text elements to the screen
         screen.fill(0)
+
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
