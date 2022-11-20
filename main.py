@@ -240,7 +240,8 @@ def mainScreen():
     for routine in dayRoutine: #determining where the free places are in the schedule
         hour = routine["hour"]
         minute = routine["minute"]
-        if hour >= currHour and minute >= currMin: #check what free time lasts between
+        freeMinutes = (hour - currHour) * 60 + (minute - currMin)
+        if freeMinutes >= 0: #check what free time lasts between
             freeMinutes = (hour - currHour) * 60 + (minute - currMin)
             #find the most urgent task
             if len(finalUrgency) > 0:
@@ -257,6 +258,8 @@ def mainScreen():
                 finalUrgency.pop(0)
             else:
                 finalSchedule.append(f"{currHour}:{minDisplay(currMin)} - Free Time")
+
+            print(routine["name"])
             finalSchedule.append(f"{hour}:{minDisplay(minute)} - {routine['name']}")
             currHour, currMin = forwardTime(hour, minute, routine["rtime"])
 
