@@ -73,9 +73,22 @@ def drawText(txt, textFont, position, color):
     textRect.center = leftAlignRect(textRect, position)
     screen.blit(text, textRect)
 
-#returns how urgently a task needs to be done with 1 being the highest and 3 being the lowest
+#returns how urgently a task needs to be done with 2 being the highest and 0 being the lowest
+urgencyMap = ["Not Urgent", "Urgent", "Very Urgent"]
 def calculateUrgency(task):
-    pass
+    dueDate = datetime.date(task["year"], task["month"], task["day"])
+    currentDate = datetime.date.today()
+    remainingDays = dueDate.toordinal() - currentDate.toordinal()
+    reminaingLength = task["length"] - task["progress"]
+    urgency = 1
+    if remainingDays < 7:
+        urgency += 1
+
+    if reminaingLength / remainingDays > 3:
+        urgency += 1
+
+    return urgency
+
 
 def mainScreen():
     #main render task
@@ -191,8 +204,11 @@ def routineScreen(): #add and remove things to your daily routine
                 displayY += 50
 
         #if there is a specific task selected details about it should be displayed
-        drawText(f"Due Date: {task['year']}/{task['month']}/{task['day']}", bodyFont, (10, 300), (255, 255, 255))
-        drawText(f"Progress: {round(task['progress'] / task['length'])}%", bodyFont, (10, 330), (255, 255, 255))
+        if selectedTask >= 0 and selectedTask < len(taskPages[currentPage - 1]):
+            task = taskPages[currentPage - 1][selectedTask]
+            drawText(f"Due Date: {task['year']}/{task['month']}/{task['day']}", bodyFont, (10, 300), (255, 255, 255))
+            drawText(f"Progress: {round(task['progress'] / task['length'])}%", bodyFont, (10, 330), (255, 255, 255))
+            drawText(f"Urgency: {urgencyMap[calculateUrgency(task)]}", bodyFont, (10, 360), (255, 255, 255))
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -238,6 +254,10 @@ def routineScreen(): #add and remove things to your daily routine
                         currentPage = max(currentPage - 1, 1)
                     elif highlightedButton == 2: #turn the pages forward
                         currentPage = min(currentPage + 1, pageCount)
+                    elif highlightedButton == 5: #delete a task
+                        currentTasks.pop(10 * (currentPage - 1) + selectedTask)
+                        writeJsonFile("tasks.json", currentTasks)
+                        return
                     #doing the part where button clicking works for the tasks
                     selectedTask = hoverTask
                         
