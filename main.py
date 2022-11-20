@@ -164,35 +164,35 @@ def mainScreen():
         while len(mergeSort) != 1:
             newMerger = []
             for i in range(0, len(mergeSort), 2): #merge smaller tables together
-                newTable = []
-                oldA = mergeSort[i]
-                oldB = mergeSort[i + 1]
-                a = 0
-                b = 0
-                j = 0
+                if i + 1 == len(mergeSort):
+                    newMerger.append(mergeSort[i])
+                else:
+                    newTable = []
+                    oldA = mergeSort[i]
+                    oldB = mergeSort[i + 1]
+                    a = 0
+                    b = 0
 
-                while a < len(oldA) or b < len(oldB):
-                    ac = a < len(oldA)
-                    bc = b < len(oldB)
-                    if (ac and bc): #compare which item is smaller
-                        ae = oldA[a]
-                        be = oldB[b]
-                        if (ae["hour"] * 60 + ae["minute"] < be["hour"] * 60 + be["minute"]):
-                            newTable.append(ae)
+                    while a < len(oldA) or b < len(oldB):
+                        ac = a < len(oldA)
+                        bc = b < len(oldB)
+                        if (ac and bc): #compare which item is smaller
+                            ae = oldA[a]
+                            be = oldB[b]
+                            if (ae["hour"] * 60 + ae["minute"] < be["hour"] * 60 + be["minute"]):
+                                newTable.append(ae)
+                                a += 1
+                            else:
+                                newTable.append(be)
+                                b += 1
+                        elif ac:
+                            newTable.append(oldA[a])
                             a += 1
-                        else:
-                            newTable.append(be)
+                        elif bc:
+                            newTable.append(oldB[b])
                             b += 1
-                    elif ac:
-                        newTable.append(ae)
-                        a += 1
-                    elif bc:
-                        newTable.append(be)
-                        b += 1
 
-                    j += 1
-
-                newMerger.append(newTable)
+                    newMerger.append(newTable)
             
             mergeSort = newMerger
         
@@ -251,7 +251,7 @@ def mainScreen():
                 if freeMinutes > progressLeft * 60:
                     fHour, fMin = forwardTime(currHour, currMin, freeMinutes - progressLeft * 60)
                     taskWorkload.append([finalUrgency[0][0], progressLeft])
-                    finalSchedule.append(f"{fHour}:{minDisplay(fMin)} - Break")
+                    finalSchedule.append(f"{int(fHour)}:{minDisplay(fMin)} - Break")
                 else:
                     taskWorkload.append([finalUrgency[0][0], freeMinutes / 60])
                 
@@ -478,9 +478,9 @@ def routineScreen(): #give specifics about your day to day life
                 if selectedRoutine == ridx: #make it look extra special and display routine data
                     drawText(routine["name"], titleFont, (400, displayY), (255, 0, 0))
                     drawText(f"Recurring: {routine['recurring']}", bodyFont, (10, 300), (255, 255, 255))
-                    drawText(f"Starting time: {routine['hour']}:{routine['minute']}", bodyFont, (10, 330), (255, 255, 255))
+                    drawText(f"Starting time: {routine['hour']}:{minDisplay(routine['minute'])}", bodyFont, (10, 330), (255, 255, 255))
                     fwdHour, fwdMinute = forwardTime(routine["hour"], routine["minute"], routine["rtime"])
-                    drawText(f"Ending time: {fwdHour}:{fwdMinute}", bodyFont, (10, 360), (255, 255, 255))
+                    drawText(f"Ending time: {fwdHour}:{minDisplay(fwdMinute)}", bodyFont, (10, 360), (255, 255, 255))
 
                     recurData = routine["recurData"]
                     if routine["recurring"] == "weeks": #draw all the days where this event occurs
