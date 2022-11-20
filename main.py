@@ -86,6 +86,11 @@ def forwardTime(hour, minute, minutes):
     minute %= 60
     return hour, minute
 
+#returns a display string so if there is only one digit in minutes, a zero will be appended
+def minDisplay(minutes):
+    if minutes < 10:
+        return "0" + str(round(minutes))
+    return str(round(minutes))
 #returns how urgently a task needs to be done with 2 being the highest and 0 being the lowest
 urgencyMap = ["Not Urgent", "Urgent", "Very Urgent"]
 def calculateUrgency(task):
@@ -112,24 +117,158 @@ def mainScreen():
     username = environment["USERNAME"]
     currentTasks = readJsonFile("tasks.json")
     baseSchedule = readJsonFile("fixedSchedule.json")
+    userProfile = readJsonFile("userProfile.json")
 
     buttons = [
         buttonData("Task Manager", titleFont, (10, 360), (200, 36)),
-        buttonData("Daily Routine", titleFont, (10, 410), (200, 36))
+        buttonData("Daily Routine", titleFont, (10, 410), (200, 36)),
+        buttonData("Mark Completion", titleFont, (10, 460), (200, 36))
     ]
 
     buttonHolderMap = {
         1: "tasks",
         2: "routine",
-        3: "userdata"
     }
+
+    #determine today's schedule based on the routine and tasks that need to be completed
+    currentDate = datetime.date.today()
+    dayRoutine = [] #first determine what routine items will occur today
+    for routine in baseSchedule:
+        if routine["recurring"] == "days":
+            dayRoutine.append(routine)
+        elif routine["recurring"] == "weeks": #check if the recurring day is today
+            currentDay = currentDate.weekday() + 1
+            for day in routine["recurData"]:
+                if day == currentDay:
+                    dayRoutine.append(routine)
+                    break
+        elif routine["recurring"] == "months": #check if today is in the days of the month specified by the routine
+            recurData = routine["recurData"]
+            startingDay = recurData[0]
+            endingDay = startingDay + recurData[1]
+            if checkBounds(startingDay, endingDay, currentDate.day):
+                dayRoutine.append(routine)
+        elif routine["recurring"] == "years": #check if it is on the specific date set by the year routine
+            recurData = routine["recurData"]
+            startingDate = datetime.date(currentDate.year, recurData[0], recurData[1]).toordinal()
+            if checkBounds(startingDate, startingDate + recurData[2], currentDate.toordinal()):
+                dayRoutine.append(routine)
+    
+    #sort every day routine by when they occur
+    dlen = len(dayRoutine)
+    if dlen > 0:
+        mergeSort = []
+        for item in dayRoutine:
+            mergeSort.append([item])
+
+        while len(mergeSort) != 1:
+            newMerger = []
+            for i in range(0, len(mergeSort), 2): #merge smaller tables together
+                newTable = []
+                oldA = mergeSort[i]
+                oldB = mergeSort[i + 1]
+                a = 0
+                b = 0
+                j = 0
+
+                while a < len(oldA) or b < len(oldB):
+                    ac = a < len(oldA)
+                    bc = b < len(oldB)
+                    if (ac and bc): #compare which item is smaller
+                        ae = oldA[a]
+                        be = oldB[b]
+                        if (ae["hour"] * 60 + ae["minute"] < be["hour"] * 60 + be["minute"]):
+                            newTable.append(ae)
+                            a += 1
+                        else:
+                            newTable.append(be)
+                            b += 1
+                    elif ac:
+                        newTable.append(ae)
+                        a += 1
+                    elif bc:
+                        newTable.append(be)
+                        b += 1
+
+                    j += 1
+
+                newMerger.append(newTable)
+            
+            mergeSort = newMerger
+        
+        dayRoutine = mergeSort[0]
+    
+    #get priority for every task
+    vUrgent = []
+    urgent = []
+    nUrgent = []
+
+    tidx = 0
+    for task in currentTasks:
+        urgency = calculateUrgency(task)
+        if urgency == 3:
+            vUrgent.append([tidx, urgency, task])
+        elif urgency == 2:
+            urgent.append([tidx, urgency, task])
+        else:
+            nUrgent.append([tidx, urgency, task])
+        tidx += 1
+    
+    finalUrgency = vUrgent + urgent + nUrgent
+
+    #find a routine that loops if it exists
+    currHour = 0
+    currMin = 0
+    currRoutine = None
+    loopSchedule = False
+    for routine in dayRoutine:
+        hour = routine["hour"]
+        minute = routine["minute"]
+        cHour, cMinute = forwardTime(hour, minute, routine["rtime"])
+        if cHour < hour: #we must start the routine from here
+            currHour = cHour
+            currMin = cMinute
+            currRoutine = routine["name"]
+            loopSchedule = True
+
+    #create daily schedule based on routine
+    taskWorkload = []
+    finalSchedule = [] #variable for displaying the final schedule
+    if loopSchedule:
+        finalSchedule.append(f"0:00 - {currRoutine}")
+
+    for routine in dayRoutine: #determining where the free places are in the schedule
+        hour = routine["hour"]
+        minute = routine["minute"]
+        if hour >= currHour and minute >= currMin: #check what free time lasts between
+            freeMinutes = (hour - currHour) * 60 + (minute - currMin)
+            #find the most urgent task
+            if len(finalUrgency) > 0:
+                task = finalUrgency[0][2]
+                progressLeft = task["length"] - task["progress"]
+                finalSchedule.append(f"{currHour}:{minDisplay(currMin)} - {task['name']}")
+                if freeMinutes > progressLeft * 60:
+                    fHour, fMin = forwardTime(currHour, currMin, freeMinutes - progressLeft * 60)
+                    taskWorkload.append([finalUrgency[0][0], progressLeft])
+                    finalSchedule.append(f"{fHour}:{minDisplay(fMin)} - Break")
+                else:
+                    taskWorkload.append([finalUrgency[0][0], freeMinutes / 60])
+                
+                finalUrgency.pop(0)
+            else:
+                finalSchedule.append(f"{currHour}:{minDisplay(currMin)} - Free Time")
+            finalSchedule.append(f"{hour}:{minDisplay(minute)} - {routine['name']}")
+            currHour, currMin = forwardTime(hour, minute, routine["rtime"])
+
+    if not loopSchedule:
+        finalSchedule.append(f"{currHour}:{minDisplay(currMin)} - Free Time")
 
     while True:
         #drawing the title screen and sidebars
         screen.fill(0)
         drawText("EZTime", titleFont, (10, 15), (255, 255, 255))
         drawText(f"Welcome back, {username}!", titleFont, (400, 15), (255, 255, 255))
-        drawText("Here is your schedule for today!", titleFont, (400, 45), (255, 255, 255))
+        drawText("Here is your schedule for today!", titleFont, (400, 55), (255, 255, 255))
 
         #rendering all buttons and checking hitboxes
         highlightedButton = 0
@@ -145,6 +284,12 @@ def mainScreen():
             else:
                 drawText(button.text, titleFont, buttonPos, (255, 255, 255))
 
+        #rendering all schedule items
+        y = 95
+        for t in finalSchedule:
+            drawText(t, titleFont, (400, y), (255, 255, 255))
+            y += 40
+
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -158,6 +303,16 @@ def mainScreen():
                     if highlightedButton in buttonHolderMap:
                         currentScreen = buttonHolderMap[highlightedButton]
                         return; #leave the main screen and enter the new screen
+                    elif highlightedButton == 3: #marking completion
+                        today = datetime.date.today().toordinal()
+                        if userProfile["lastMarked"] != today:
+                            userProfile["lastMarked"] = today
+                            for tData in taskWorkload: #mark progress for every task
+                                currentTasks[tData[0]]["progress"] += tData[1]
+
+                            writeJsonFile("tasks.json", currentTasks)
+                            writeJsonFile("userProfile.json", userProfile)
+                            return
 
 def taskScreen(): #add and remove things to your daily routine
     global currentScreen
